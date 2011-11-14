@@ -20,7 +20,7 @@ Not many.
 * Mac OS X. ruby-mdxplay only supports CoreAudio right now
 * Ruby 1.9.3
 * The following gems: ansi coreaudio ffi slop
-* mdxmini (Install from here if you're on Homebrew: mistydemeo/homebrew@41a059975add9f74386ac2c98253de6a4d990c04)
+* mdxmini (Install from here if you're on Homebrew: https://github.com/mistydemeo/homebrew/commit/d8f852439886a152eafa9e5684f8c4d58992ff8e)
 
 Usage
 -----
