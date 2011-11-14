@@ -273,7 +273,7 @@ end
 
 MDXMini.init
 
-Dir.glob(ARGV).select {|f| f.downcase =~ /.mdx/}.each {|song| MDXMini.process song}
+Dir.glob(ARGV).select {|f| File.extname(f).downcase == '.mdx'}.each {|song| MDXMini.process song}
 
 IO.console.ioflush
 puts ANSI.reset
