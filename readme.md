@@ -47,13 +47,13 @@ Known issues:
 FAQ
 ---
 
-Q: That ASCII piano is awesome.
+Q: That ASCII piano is awesome.<br>
 A: Why thank you!
 
-Q: That ASCII piano sucks.
+Q: That ASCII piano sucks.<br>
 A: Use -q to silence printing of song names, playtime, and the piano.
 
-Q: This song says it's going to play for 20 minutes. That seems like a long time.
+Q: This song says it's going to play for 20 minutes. That seems like a long time.<br>
 A: Some songs have buggy loop handling. Try adding `-l 1` to your commandline arguments.
 
 Thanks
