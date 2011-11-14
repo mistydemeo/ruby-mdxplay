@@ -1,6 +1,7 @@
 #!/usr/bin/env ruby
 # encoding: utf-8
-# ruby-mdxplayer 1.0 - see http://github.com/mistydemeo/ruby-mdxplay
+#
+# ruby-mdxplay 1.0 - see http://github.com/mistydemeo/ruby-mdxplay
 # for more information
 
 require 'coreaudio'
