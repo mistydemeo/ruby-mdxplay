@@ -4,7 +4,7 @@ $LOAD_PATH.unshift(lib) unless $LOAD_PATH.include?(lib)
 
 Gem::Specification.new do |spec|
   spec.name          = "ruby-mdxplay"
-  spec.version       = "2.0"
+  spec.version       = "2.0.0"
   spec.authors       = ["Misty De Meo"]
   spec.email         = ["mistydemeo@gmail.com"]
 
