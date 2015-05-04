@@ -1,17 +1,17 @@
 # coding: utf-8
 lib = File.expand_path('../lib', __FILE__)
 $LOAD_PATH.unshift(lib) unless $LOAD_PATH.include?(lib)
-require 'ruby/mdxplay/version'
 
 Gem::Specification.new do |spec|
   spec.name          = "ruby-mdxplay"
-  spec.version       = Ruby::Mdxplay::VERSION
+  spec.version       = "2.0"
   spec.authors       = ["Misty De Meo"]
   spec.email         = ["mistydemeo@gmail.com"]
 
-  spec.summary       = %q{TODO: Write a short summary, because Rubygems requires one.}
-  spec.description   = %q{TODO: Write a longer description or delete this line.}
-  spec.homepage      = "TODO: Put your gem's website or public repo URL here."
+  spec.summary       = %q{Commandline MDX chiptune player.}
+  spec.description   = %q{Simple commandline frontend to the libmdxmini chiptune library, with output via coreaudio.}
+  spec.homepage      = "http://github.com/mistydemeo/ruby-mdxplay"
+  spec.license       = "GPL-2.0"
 
   # Prevent pushing this gem to RubyGems.org by setting 'allowed_push_host', or
   # delete this section to allow pushing this gem to any host.
