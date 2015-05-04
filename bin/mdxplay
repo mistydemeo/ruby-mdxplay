@@ -26,7 +26,7 @@ module MDXMini
   attach_function :mdx_get_length, [:pointer], :int
   attach_function :mdx_get_tracks, [:pointer], :int
   attach_function :mdx_get_current_notes, [:pointer, :pointer, :int], :void
-  attach_function :mdx_stop, [:pointer], :void
+  attach_function :mdx_close, [:pointer], :void
   attach_function :mdx_get_sample_size, [:pointer], :int
   attach_function :mdx_get_buffer_size, [:pointer], :int
 
