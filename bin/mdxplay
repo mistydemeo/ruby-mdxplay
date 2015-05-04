@@ -53,16 +53,16 @@ module MDXMini
     # Needs to be done *before* #mdx_open
     self.mdx_set_rate @dev.nominal_rate.to_i
 
-    @opts = Slop.parse! do
-      banner "Usage: mdxplay <song> [options]"
-      on :l, :loops, "Number of song loops", argument: true, as: :int
-      on :q, :quiet, "Don't print song name"
-      on :h, :help, "Display this message" do
-        puts help
+    @opts = Slop.parse do |o|
+      o.banner = "Usage: mdxplay <song> [options]"
+      o.int "-l", "--loops", "Number of song loops", argument: true
+      o.on "-q", "--quiet", "Don't print song name"
+      o.on "-h", "--help", "Display this message" do
+        puts o
         exit 0
       end
-      on :v, :version, "Display version information" do
-        puts "ruby-mdxplayer 1.0
+      o.on "-v", "--version", "Display version information" do
+        puts "ruby-mdxplayer 2.0
 Based on mdxmini by BouKiCHi and mdxplayer by Daisuke \"Breeze\" Nagano
 Written by Misty De Meo"
         exit 0
@@ -70,11 +70,12 @@ Written by Misty De Meo"
         
     end
 
-    if ARGV.empty?
-      puts @opts.help
+    if @opts.args.empty?
+      puts @opts
       exit 0
     end
 
+    return @opts
   end
 
   def self.open_song song
@@ -271,9 +272,9 @@ Written by Misty De Meo"
   end
 end
 
-MDXMini.init
+opts = MDXMini.init
 
-Dir.glob(ARGV).select {|f| File.extname(f).downcase == '.mdx'}.each {|song| MDXMini.process song}
+Dir.glob(opts.args).select {|f| File.extname(f).downcase == '.mdx'}.each {|song| MDXMini.process song}
 
 IO.console.ioflush
 puts ANSI.reset
