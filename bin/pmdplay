@@ -1,0 +1,268 @@
+#!/usr/bin/env ruby
+# encoding: utf-8
+#
+# ruby-pmdplay 1.0 - see http://github.com/mistydemeo/ruby-mdxplay
+# for more information
+
+require 'coreaudio'
+require 'slop'
+require 'ffi'
+require 'io/console'
+require 'ansi'
+
+module PMDMini
+  extend FFI::Library
+  ffi_lib "pmdmini"
+
+  attach_function :pmd_init, [  ], :void
+  attach_function :pmd_setrate, [ :int ], :void
+  attach_function :pmd_is_pmd, [ :string ], :int
+  attach_function :pmd_play, [ :string ], :int
+  attach_function :pmd_length_sec, [  ], :int
+  attach_function :pmd_loop_sec, [  ], :int
+  attach_function :pmd_renderer, [ :pointer, :int ], :void
+  attach_function :pmd_stop, [  ], :void
+  attach_function :pmd_get_title, [ :pointer ], :void
+  attach_function :pmd_get_compo, [ :pointer ], :void
+  attach_function :pmd_get_tracks, [  ], :int
+  attach_function :pmd_get_current_notes, [ :pointer, :int ], :void
+
+  def self.title
+    @title = FFI::MemoryPointer.new :char, 1024
+    self.pmd_get_title @title
+    @title = @title.read_bytes 1024
+    # Some songs contain invalid S-JIS and can't be decoded by Ruby
+    @title.force_encoding('Shift_JIS').encode!('UTF-8').rstrip! rescue "Unable to retrieve title..."
+
+    @composer = FFI::MemoryPointer.new :char, 1024
+    self.pmd_get_compo @composer
+    @composer = @composer.read_bytes 1024
+
+    @title + ' ' + @composer
+  end
+
+  def self.init
+    @buf_len = 4096
+    @buffer = FFI::MemoryPointer.new :char, 16384, true
+    @dev = CoreAudio.default_output_device
+    @outbuf = @dev.output_buffer 1024
+
+    @buffers_per_second = ((@dev.nominal_rate.to_i * 16 * 2) / 8) / 16384.0
+
+    @note_buffer = FFI::MemoryPointer.new :int, 32, true
+
+    # Set the playback frequency to the user's settings
+    # Needs to be done *before* #pmd_play, *after* #pmd_init
+    self.pmd_init
+    self.pmd_setrate @dev.nominal_rate.to_i
+
+    @opts = Slop.parse do |o|
+      o.banner = "Usage: pmdplay <song> [options]"
+      o.int "-l", "--loops", "Number of song loops", argument: true
+      o.on "-q", "--quiet", "Don't print song name"
+      o.on "-h", "--help", "Display this message" do
+        puts o
+        exit 0
+      end
+      o.on "-v", "--version", "Display version information" do
+        puts "ruby-pmdplayer 2.0
+Based on pmdmini by BouKiCHi and PMDWin by C60
+Written by Misty De Meo"
+        exit 0
+      end
+        
+    end
+
+    if ARGV.empty?
+      puts @opts
+      exit 0
+    end
+
+  end
+
+  def self.open_song song
+    if File.exist? song  and self.pmd_is_pmd song
+      PMDMini.pmd_play song
+    else
+      puts "The specified song doesn't exist."
+      puts @opts.help
+      exit 1
+    end
+  end
+  
+  def self.get_notes
+    # White and black keyboard keys
+    note_lookup = { 1 => :white, #c
+                    2 => :black, #c+
+                    3 => :white, #d
+                    4 => :black, #d+
+                    5 => :white, #e
+                    6 => :white, #f
+                    7 => :black, #f+
+                    8 => :white, #g
+                    9 => :black, #g+
+                    10 => :white, #a
+                    11 => :black, #a+
+                    12 => :white } #b
+
+    percussion_lookup = {  0 => '.',
+                           1 => '#',
+                           2 => '-',
+                           3 => '+',
+                           4 => '*' }
+    percussion_lookup.default = '*'
+    percussion_colours = { 0 => :black,
+                           1 => :blue,
+                           2 => :green,
+                           3 => :cyan,
+                           4 => :red }
+    percussion_colours.default = :red
+    
+    # These thick bars are Unicode symbols; doesn't work in ASCII
+    piano = '┃▇▀▇▀▇▇▀▇▀▇▀▇┃'
+    
+    n = pmd_get_tracks
+    self.pmd_get_current_notes @note_buffer, n
+    
+    # 0 and -1 don't map onto the keyboard, and we don't want percussion
+    note_array = @note_buffer.get_array_of_int( 0, 7 ).reject do |note|
+      note < 0
+    end
+    
+    percussion_array = @note_buffer.get_array_of_int( 0, n )
+    percussion_array = percussion_array[8..-1]
+    #print percussion_array
+    
+    # Promote note number by one, since scale counts from 0-11
+    note_array.collect! do |note| 
+      [(note % 12) + 1, :red]
+    end.uniq rescue []
+    
+    # Generate the drums. Negative entries don't get displayed
+    drums = percussion_array.collect do |note|
+      if note == -1
+        ' '
+      else
+        percussion_lookup[note]
+      end
+    end
+    
+    drum_colours = percussion_array.each_with_index.collect do |note,index|
+      if note == -1
+        [index, :hide]
+      else
+        [index, percussion_colours[note]]
+      end
+    end
+    print 
+    
+    # Duplicate notes cause problems; remove note array entries
+    # that are in the list of notes being played
+    note_lookup.reject! do |note,value|
+      note_array.assoc note
+    end
+  
+    # This debug array contains the notes being played
+    # Use it if you don't trust what the piano shows you
+    #debug_ary = @note_buffer.get_array_of_int( 0, 7 ).collect do |note|
+    #  note % 12
+    #end
+    
+    # Returns an ANSI-formatted string with the piano
+    [ANSI::String.new( piano, note_lookup.to_a + note_array + [[13, :clear]] ),
+    # Returns an ANSI-formatted string with the drums
+    ANSI::String.new( drums.join, drum_colours + [[drums.count, :clear]])]
+  end
+
+  def self.play
+    @outbuf.start
+    buffers = 0
+    length = self.pmd_length_sec
+
+    play_loop = Thread.new do
+    begin
+      Thread.stop if Thread.current[:stop]
+      print "\e[2K#{"\b" * IO.console.winsize[1]}"
+      
+      buffers += 1
+      position = (buffers/@buffers_per_second).to_i
+      
+      # Percussion and piano
+      notes = self.get_notes
+      print "\e[g\e[0m『#{notes[1]}』 ♪【#{notes[0]}】♪ #{self.to_t position}/#{self.to_t length}" unless @opts[:q]
+      
+      # Stop playback on hitting reported song end,
+      # or when elapsed time exceeds reported song duration
+      finished = self.pmd_renderer @buffer, @buf_len
+      finished = 0 if buffers > (length * @buffers_per_second)
+      
+      sample = @buffer.read_bytes(@buffer.size)
+      sample = NArray.to_narray(sample, NArray::SINT, 2, @buf_len)
+      @outbuf << sample
+    end while finished != 0
+    print "#{ANSI.reset}\b" * IO.console.winsize[1]
+    end
+    
+    poller = Thread.new do
+    begin
+      case IO.console.getch
+      when 'q'
+        IO.console.ioflush
+        puts ANSI.reset
+        system("stty -raw echo")
+        exit 0
+      when 'n'
+        print "\e[2K\b" * IO.console.winsize[1]
+        play_loop.kill
+        
+        break
+      when " "
+        if play_loop[:stop] == true
+          print "\e[2K"
+          play_loop[:stop] = false
+          play_loop.run
+        else
+          play_loop[:stop] = true
+          print " -= Paused =-"
+        end
+      end
+    end while play_loop.alive?
+    end
+    play_loop.join
+    Thread.kill(poller)
+    IO.console.ioflush
+
+    @outbuf.stop
+  end
+
+  def self.process song
+    @song = File.basename song
+    self.open_song File.expand_path song
+    puts "Now playing: #{PMDMini.title} [#{@song}]..." unless PMDMini.quiet?
+    self.play
+  end
+  
+  def self.to_t time
+    "%02d:%02d" % [(time / 60).to_i, (time.remainder 60)]
+  end
+
+  def self.quiet?
+    @opts[:q]
+  end
+
+  def self.help
+    puts @opts.help
+    exit 0
+  end
+end
+
+PMDMini.init
+
+Dir.glob(ARGV).each {|song| PMDMini.process song}
+
+IO.console.ioflush
+puts ANSI.reset
+
+# IO.console.getch can trap the terminal in raw mode
+# Restore the tty before terminating
+system("stty -raw echo")
